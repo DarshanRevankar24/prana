@@ -13,12 +13,22 @@ L.Icon.Default.mergeOptions({
 });
 
 const LocationPicker = ({ lat, lng, setLat, setLng }) => {
-    useMapEvents({
+    const map = useMapEvents({
         click(e) {
             setLat(e.latlng.lat.toFixed(5));
             setLng(e.latlng.lng.toFixed(5));
         },
     });
+
+    useEffect(() => {
+        if (lat && lng) {
+            map.flyTo([parseFloat(lat), parseFloat(lng)], 13, {
+                animate: true,
+                duration: 1.5
+            });
+        }
+    }, [lat, lng, map]);
+
     return lat && lng ? (
         <Marker position={[lat, lng]}>
             <Popup>Incident Location</Popup>
@@ -145,6 +155,24 @@ const AmbulancePortal = () => {
         }
     };
 
+    const handleLocateMe = () => {
+        if ("geolocation" in navigator) {
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    setLat(position.coords.latitude.toFixed(5));
+                    setLng(position.coords.longitude.toFixed(5));
+                },
+                (error) => {
+                    console.error("Error getting location:", error);
+                    alert("Could not get your location. Please ensure location services are enabled.");
+                },
+                { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+            );
+        } else {
+            alert("Geolocation is not supported by your browser.");
+        }
+    };
+
     const markArrived = async () => {
         if (!activeTrip) return;
         try {
@@ -185,7 +213,12 @@ const AmbulancePortal = () => {
                             <form onSubmit={handleCreateIncident}>
                                 <div className="grid-2" style={{ gap: '1rem' }}>
                                     <div className="form-group" style={{ gridColumn: '1 / -1' }}>
-                                        <label className="form-label">Location (Click map to select)</label>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                                            <label className="form-label" style={{ margin: 0 }}>Location (Click map or use GPS)</label>
+                                            <button type="button" onClick={handleLocateMe} className="btn btn-outline" style={{ padding: '0.25rem 0.5rem', fontSize: '0.8rem' }}>
+                                                📍 Locate Me
+                                            </button>
+                                        </div>
                                         <MapContainer center={[12.9716, 77.5946]} zoom={11} scrollWheelZoom={true} style={{ height: '300px', width: '100%', borderRadius: '8px', zIndex: 1 }}>
                                             <TileLayer
                                                 attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
@@ -301,9 +334,21 @@ const AmbulancePortal = () => {
                                         <div style={{ marginTop: '0.5rem', color: 'var(--text-muted)', fontSize: '0.8rem' }}>Match Score: {match.score.toFixed(1)}/100</div>
                                     </div>
 
-                                    <button onClick={() => selectHospital(match)} className="btn btn-primary" style={{ width: '100%' }} disabled={loading}>
-                                        Dispatch Here <ArrowRight size={18} />
-                                    </button>
+                                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                        <button onClick={() => selectHospital(match)} className="btn btn-primary" style={{ flex: 1 }} disabled={loading}>
+                                            Dispatch <ArrowRight size={18} />
+                                        </button>
+                                        <a
+                                            href={`https://www.google.com/maps/dir/?api=1&origin=${lat},${lng}&destination=${match.hospital.lat},${match.hospital.lng}`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="btn btn-outline"
+                                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 1rem' }}
+                                            title="Open in Google Maps"
+                                        >
+                                            📍 Maps
+                                        </a>
+                                    </div>
                                 </div>
                             ))}
                         </div>
